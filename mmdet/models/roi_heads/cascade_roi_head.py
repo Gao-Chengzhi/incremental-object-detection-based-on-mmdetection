@@ -16,7 +16,69 @@ from mmdet.utils import (ConfigType, InstanceList, MultiConfig, OptConfigType,
                          OptMultiConfig)
 from ..utils.misc import empty_instances, unpack_gt_instances
 from .base_roi_head import BaseRoIHead
+from mmengine.model import caffe2_xavier_init, constant_init
+"""
+def load_pretrained_weights(self):
+        # 加载预训练模型，并对旧类的权重进行保留，新类进行随机初始化。
+        checkpoint_path = self.checkpoint_path  # 预训练模型路径
+        checkpoint = torch.load(checkpoint_path)
 
+        state_dict = checkpoint['state_dict']
+
+        # 对 bbox head 进行处理
+        for i, bbox_head in enumerate(self.bbox_head):
+            cls_weight_key = f'roi_head.bbox_head.{i}.fc_cls.weight'
+            cls_bias_key = f'roi_head.bbox_head.{i}.fc_cls.bias'
+
+            # 获取预训练模型的权重
+            if cls_weight_key in state_dict:
+                old_cls_weight = state_dict[cls_weight_key]
+                old_cls_bias = state_dict[cls_bias_key]
+
+                # 新类的权重随机初始化
+                num_new_classes = bbox_head.fc_cls.out_features
+                new_cls_weight = torch.zeros(num_new_classes, old_cls_weight.shape[1])
+                new_cls_bias = torch.zeros(num_new_classes)
+                # print(f' debug=======  {new_cls_weight}')
+                # input()
+                # caffe2_xavier_init(new_cls_weight)
+                # caffe2_xavier_init(new_cls_bias)
+                # print(f' debug after init =======  {new_cls_weight}')
+                # input()
+                # 保留旧类的权重
+                new_cls_weight[:old_cls_weight.shape[0], :] = old_cls_weight
+                new_cls_bias[:old_cls_bias.shape[0]] = old_cls_bias
+
+                # 更新模型中的权重
+                bbox_head.fc_cls.weight.data.copy_(new_cls_weight)
+                bbox_head.fc_cls.bias.data.copy_(new_cls_bias)
+
+        # 对 mask head 进行类似处理
+        if self.with_mask:
+            for i, mask_head in enumerate(self.mask_head):
+                mask_weight_key = f'roi_head.mask_head.{i}.conv_logits.weight'
+                mask_bias_key = f'roi_head.mask_head.{i}.conv_logits.bias'
+
+                if mask_weight_key in state_dict:
+                    old_mask_weight = state_dict[mask_weight_key]
+                    old_mask_bias = state_dict[mask_bias_key]
+                    num_new_classes = mask_head.conv_logits.out_channels
+                    # 新类的mask头权重随机初始化
+                    new_mask_weight = torch.zeros(num_new_classes, old_mask_weight.shape[1], old_mask_weight.shape[2], old_mask_weight.shape[3])
+                    new_mask_bias = torch.zeros(num_new_classes)
+
+                    
+                    # caffe2_xavier_init(new_mask_weight)
+                    # caffe2_xavier_init(new_mask_bias)
+
+                    # 保留旧类的权重
+                    new_mask_weight[:old_mask_weight.shape[0], :, :, :] = old_mask_weight
+                    new_mask_bias[:old_mask_bias.shape[0]] = old_mask_bias
+
+                    # 更新模型中的权重
+                    mask_head.conv_logits.weight.data.copy_(new_mask_weight)
+                    mask_head.conv_logits.bias.data.copy_(new_mask_bias)
+"""
 
 @MODELS.register_module()
 class CascadeRoIHead(BaseRoIHead):
@@ -27,6 +89,7 @@ class CascadeRoIHead(BaseRoIHead):
 
     def __init__(self,
                  num_stages: int,
+                 # checkpoint_path: str,
                  stage_loss_weights: Union[List[float], Tuple[float]],
                  bbox_roi_extractor: OptMultiConfig = None,
                  bbox_head: OptMultiConfig = None,
@@ -40,8 +103,10 @@ class CascadeRoIHead(BaseRoIHead):
         assert bbox_head is not None
         assert shared_head is None, \
             'Shared head is not supported in Cascade RCNN anymore'
-
+        #print(f'debug init cfg = {init_cfg}')
+        # input()
         self.num_stages = num_stages
+        #self.checkpoint_path = checkpoint_path
         self.stage_loss_weights = stage_loss_weights
         super().__init__(
             bbox_roi_extractor=bbox_roi_extractor,
@@ -53,6 +118,11 @@ class CascadeRoIHead(BaseRoIHead):
             test_cfg=test_cfg,
             init_cfg=init_cfg)
 
+        # 添加加载预训练模型的逻辑
+        #if checkpoint_path is not None:
+        #     self.load_pretrained_weights()
+        
+    
     def init_bbox_head(self, bbox_roi_extractor: MultiConfig,
                        bbox_head: MultiConfig) -> None:
         """Initialize box head and box roi extractor.

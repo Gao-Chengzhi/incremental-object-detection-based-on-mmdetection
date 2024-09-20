@@ -177,7 +177,9 @@ class CocoDataset(BaseDetDataset):
 
         filter_empty_gt = self.filter_cfg.get('filter_empty_gt', False)
         min_size = self.filter_cfg.get('min_size', 0)
-
+        K_shot = self.filter_cfg.get('K_shot', -1)
+        # print(f'K_shot{K_shot}')
+        # input()
         # obtain images that contain annotation
         ids_with_ann = set(data_info['img_id'] for data_info in self.data_list)
         # obtain images that contain annotations of the required categories
@@ -188,14 +190,54 @@ class CocoDataset(BaseDetDataset):
         # to filter out images if self.filter_empty_gt=True
         ids_in_cat &= ids_with_ann
 
-        valid_data_infos = []
-        for i, data_info in enumerate(self.data_list):
-            img_id = data_info['img_id']
-            width = data_info['width']
-            height = data_info['height']
-            if filter_empty_gt and img_id not in ids_in_cat:
-                continue
-            if min(width, height) >= min_size:
-                valid_data_infos.append(data_info)
-
+        
+        if K_shot == -1:
+            # 源码部分
+            valid_data_infos = []
+            for i, data_info in enumerate(self.data_list):
+                img_id = data_info['img_id']
+                width = data_info['width']
+                height = data_info['height']
+                if filter_empty_gt and img_id not in ids_in_cat:
+                    continue
+                if min(width, height) >= min_size:
+                    valid_data_infos.append(data_info)
+        else:
+            # 初始化每个类别的样本数量
+            category_sample_count = {cat_id: 0 for cat_id in self.cat_ids}
+            # category_sample_count[10] = 0 
+            # print(f'category_sample_count{category_sample_count}')
+            # input()
+            valid_data_infos = []
+            for i, data_info in enumerate(self.data_list):
+                img_id = data_info['img_id']
+                width = data_info['width']
+                height = data_info['height']
+                if filter_empty_gt and img_id not in ids_in_cat:
+                    continue
+                if min(width, height) < min_size:
+                    continue
+                keep_image = False
+                # 检查图片包含的类别
+                for instance in data_info['instances']:
+                    # print(f'instance {instance}')
+                    # input()
+                    category_id = self.cat_ids[instance['bbox_label']]
+                    if category_sample_count[category_id] < K_shot:
+                        category_sample_count[category_id] += 1
+                        # print(f'category_sample_count{category_sample_count}')
+                        keep_image = True
+                        
+                if keep_image:
+                    
+                    # print(f'image id /home/xray/data/pidray/train/xray_{str(img_id).zfill(5)}.png')
+                    # print(f'category_sample_count{category_sample_count}')
+                    # input()
+                    # print(f'保留图片')
+                    valid_data_infos.append(data_info)
+                    # input()
+                # else:
+                    # print(f'超出 10 shot')
+                # input()
+        # print(f'valid_data_infos {valid_data_infos}')
         return valid_data_infos

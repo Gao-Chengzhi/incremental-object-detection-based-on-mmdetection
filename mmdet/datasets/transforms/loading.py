@@ -1072,3 +1072,339 @@ class LoadTrackAnnotations(LoadAnnotations):
         repr_str += f"imdecode_backend='{self.imdecode_backend}', "
         repr_str += f'file_client_args={self.file_client_args})'
         return repr_str
+
+
+# 读取指定类别的annotation，进行过滤。
+@TRANSFORMS.register_module()
+class LoadAnnotations_with_filter(MMCV_LoadAnnotations):
+    """Load and process the ``instances`` and ``seg_map`` annotation provided
+    by dataset.
+
+    The annotation format is as the following:
+
+    .. code-block:: python
+
+        {
+            'instances':
+            [
+                {
+                # List of 4 numbers representing the bounding box of the
+                # instance, in (x1, y1, x2, y2) order.
+                'bbox': [x1, y1, x2, y2],
+
+                # Label of image classification.
+                'bbox_label': 1,
+
+                # Used in instance/panoptic segmentation. The segmentation mask
+                # of the instance or the information of segments.
+                # 1. If list[list[float]], it represents a list of polygons,
+                # one for each connected component of the object. Each
+                # list[float] is one simple polygon in the format of
+                # [x1, y1, ..., xn, yn] (n >= 3). The Xs and Ys are absolute
+                # coordinates in unit of pixels.
+                # 2. If dict, it represents the per-pixel segmentation mask in
+                # COCO's compressed RLE format. The dict should have keys
+                # “size” and “counts”.  Can be loaded by pycocotools
+                'mask': list[list[float]] or dict,
+
+                }
+            ]
+            # Filename of semantic or panoptic segmentation ground truth file.
+            'seg_map_path': 'a/b/c'
+        }
+
+    After this module, the annotation has been changed to the format below:
+
+    .. code-block:: python
+
+        {
+            # In (x1, y1, x2, y2) order, float type. N is the number of bboxes
+            # in an image
+            'gt_bboxes': BaseBoxes(N, 4)
+             # In int type.
+            'gt_bboxes_labels': np.ndarray(N, )
+             # In built-in class
+            'gt_masks': PolygonMasks (H, W) or BitmapMasks (H, W)
+             # In uint8 type.
+            'gt_seg_map': np.ndarray (H, W)
+             # in (x, y, v) order, float type.
+        }
+
+    Required Keys:
+
+    - height
+    - width
+    - instances
+
+      - bbox (optional)
+      - bbox_label
+      - mask (optional)
+      - ignore_flag
+
+    - seg_map_path (optional)
+
+    Added Keys:
+
+    - gt_bboxes (BaseBoxes[torch.float32])
+    - gt_bboxes_labels (np.int64)
+    - gt_masks (BitmapMasks | PolygonMasks)
+    - gt_seg_map (np.uint8)
+    - gt_ignore_flags (bool)
+
+    Args:
+        with_bbox (bool): Whether to parse and load the bbox annotation.
+            Defaults to True.
+        with_label (bool): Whether to parse and load the label annotation.
+            Defaults to True.
+        with_mask (bool): Whether to parse and load the mask annotation.
+             Default: False.
+        with_seg (bool): Whether to parse and load the semantic segmentation
+            annotation. Defaults to False.
+        poly2mask (bool): Whether to convert mask to bitmap. Default: True.
+        box_type (str): The box type used to wrap the bboxes. If ``box_type``
+            is None, gt_bboxes will keep being np.ndarray. Defaults to 'hbox'.
+        reduce_zero_label (bool): Whether reduce all label value
+            by 1. Usually used for datasets where 0 is background label.
+            Defaults to False.
+        ignore_index (int): The label index to be ignored.
+            Valid only if reduce_zero_label is true. Defaults is 255.
+        imdecode_backend (str): The image decoding backend type. The backend
+            argument for :func:``mmcv.imfrombytes``.
+            See :fun:``mmcv.imfrombytes`` for details.
+            Defaults to 'cv2'.
+        backend_args (dict, optional): Arguments to instantiate the
+            corresponding backend. Defaults to None.
+    """
+
+    def __init__(
+            self,
+            with_mask: bool = False,
+            poly2mask: bool = True,
+            box_type: str = 'hbox',
+            # use for semseg
+            reduce_zero_label: bool = False,
+            ignore_index: int = 255,
+            filter_classes: list = None,  # 新增参数，用于过滤类别，默认无，表示不进行过滤
+            **kwargs) -> None:
+        super(LoadAnnotations_with_filter, self).__init__(**kwargs)
+        self.with_mask = with_mask
+        self.poly2mask = poly2mask
+        self.box_type = box_type
+        self.reduce_zero_label = reduce_zero_label
+        self.ignore_index = ignore_index
+        self.filter_classes = filter_classes  # 保存指定类别列表
+
+    def _load_bboxes(self, results: dict) -> None:
+        """Private function to load bounding box annotations.
+
+        Args:
+            results (dict): Result dict from :obj:``mmengine.BaseDataset``.
+        Returns:
+            dict: The dict contains loaded bounding box annotations.
+        """
+        gt_bboxes = []
+        gt_ignore_flags = []
+        for instance in results.get('instances', []):
+            # 进行类别过滤，读取指定类别的bbox
+            if self.filter_classes is None or instance['bbox_label'] in self.filter_classes:
+                gt_bboxes.append(instance['bbox'])
+                gt_ignore_flags.append(instance['ignore_flag'])
+        if self.box_type is None:
+            results['gt_bboxes'] = np.array(
+                gt_bboxes, dtype=np.float32).reshape((-1, 4))
+        else:
+            _, box_type_cls = get_box_type(self.box_type)
+            results['gt_bboxes'] = box_type_cls(gt_bboxes, dtype=torch.float32)
+        results['gt_ignore_flags'] = np.array(gt_ignore_flags, dtype=bool)
+        # print('gt_bboxes' , results['gt_bboxes'])
+        # input()
+    def _load_labels(self, results: dict) -> None:
+        """Private function to load label annotations.
+
+        Args:
+            results (dict): Result dict from :obj:``mmengine.BaseDataset``.
+
+        Returns:
+            dict: The dict contains loaded label annotations.
+        """
+        gt_bboxes_labels = []
+        for instance in results.get('instances', []):
+            # if instance['bbox_label'] == 0:
+            #     print('存在0标号')
+            # print(f' ========================= instance {instance}, filter_classes{self.filter_classes}')
+            # input()
+            # 过滤指定的类别
+            if self.filter_classes is None or instance['bbox_label'] in self.filter_classes:
+                # if instance['bbox_label'] == 5:
+                #     gt_bboxes_labels.append(3)
+                # else:
+                gt_bboxes_labels.append(instance['bbox_label'])
+        # TODO: Inconsistent with mmcv, consider how to deal with it later.
+        results['gt_bboxes_labels'] = np.array(
+            gt_bboxes_labels, dtype=np.int64)
+        # print('gt_bboxes_labels' , results['gt_bboxes_labels'])
+        # if results['gt_bboxes_labels'] != None and results['gt_bboxes_labels'][0] == 5:
+        #     print('!!!!!!!!!!!!!!!!!')
+        # input()
+
+    def _poly2mask(self, mask_ann: Union[list, dict], img_h: int,
+                   img_w: int) -> np.ndarray:
+        """Private function to convert masks represented with polygon to
+        bitmaps.
+
+        Args:
+            mask_ann (list | dict): Polygon mask annotation input.
+            img_h (int): The height of output mask.
+            img_w (int): The width of output mask.
+
+        Returns:
+            np.ndarray: The decode bitmap mask of shape (img_h, img_w).
+        """
+
+        if isinstance(mask_ann, list):
+            # polygon -- a single object might consist of multiple parts
+            # we merge all parts into one mask rle code
+            rles = maskUtils.frPyObjects(mask_ann, img_h, img_w)
+            rle = maskUtils.merge(rles)
+        elif isinstance(mask_ann['counts'], list):
+            # uncompressed RLE
+            rle = maskUtils.frPyObjects(mask_ann, img_h, img_w)
+        else:
+            # rle
+            rle = mask_ann
+        mask = maskUtils.decode(rle)
+        return mask
+
+    def _process_masks(self, results: dict) -> list:
+        """Process gt_masks and filter invalid polygons.
+
+        Args:
+            results (dict): Result dict from :obj:``mmengine.BaseDataset``.
+
+        Returns:
+            list: Processed gt_masks.
+        """
+        gt_masks = []
+        gt_ignore_flags = []
+        for instance in results.get('instances', []):
+
+            if self.filter_classes is not None and instance['bbox_label'] not in self.filter_classes:
+            # 如果类别不在过滤列表中，则跳过该实例
+                continue
+            gt_mask = instance['mask']
+            # If the annotation of segmentation mask is invalid,
+            # ignore the whole instance.
+            if isinstance(gt_mask, list):
+                gt_mask = [
+                    np.array(polygon) for polygon in gt_mask
+                    if len(polygon) % 2 == 0 and len(polygon) >= 6
+                ]
+                if len(gt_mask) == 0:
+                    # ignore this instance and set gt_mask to a fake mask
+                    instance['ignore_flag'] = 1
+                    gt_mask = [np.zeros(6)]
+            elif not self.poly2mask:
+                # `PolygonMasks` requires a ploygon of format List[np.array],
+                # other formats are invalid.
+                instance['ignore_flag'] = 1
+                gt_mask = [np.zeros(6)]
+            elif isinstance(gt_mask, dict) and \
+                    not (gt_mask.get('counts') is not None and
+                         gt_mask.get('size') is not None and
+                         isinstance(gt_mask['counts'], (list, str))):
+                # if gt_mask is a dict, it should include `counts` and `size`,
+                # so that `BitmapMasks` can uncompressed RLE
+                instance['ignore_flag'] = 1
+                gt_mask = [np.zeros(6)]
+            gt_masks.append(gt_mask)
+            # re-process gt_ignore_flags
+            gt_ignore_flags.append(instance['ignore_flag'])
+        results['gt_ignore_flags'] = np.array(gt_ignore_flags, dtype=bool)
+        return gt_masks
+
+    def _load_masks(self, results: dict) -> None:
+        """Private function to load mask annotations.
+
+        Args:
+            results (dict): Result dict from :obj:``mmengine.BaseDataset``.
+        """
+        h, w = results['ori_shape']
+        gt_masks = self._process_masks(results)
+
+        if self.poly2mask:
+            gt_masks = BitmapMasks(
+                [self._poly2mask(mask, h, w) for mask in gt_masks], h, w)
+        else:
+            # fake polygon masks will be ignored in `PackDetInputs`
+            gt_masks = PolygonMasks([mask for mask in gt_masks], h, w)
+        results['gt_masks'] = gt_masks
+
+    def _load_seg_map(self, results: dict) -> None:
+        """Private function to load semantic segmentation annotations.
+
+        Args:
+            results (dict): Result dict from :obj:``mmcv.BaseDataset``.
+
+        Returns:
+            dict: The dict contains loaded semantic segmentation annotations.
+        """
+        if results.get('seg_map_path', None) is None:
+            return
+
+        img_bytes = get(
+            results['seg_map_path'], backend_args=self.backend_args)
+        gt_semantic_seg = mmcv.imfrombytes(
+            img_bytes, flag='unchanged',
+            backend=self.imdecode_backend).squeeze()
+
+        if self.reduce_zero_label:
+            # avoid using underflow conversion
+            gt_semantic_seg[gt_semantic_seg == 0] = self.ignore_index
+            gt_semantic_seg = gt_semantic_seg - 1
+            gt_semantic_seg[gt_semantic_seg == self.ignore_index -
+                            1] = self.ignore_index
+
+        # modify if custom classes
+        if results.get('label_map', None) is not None:
+            # Add deep copy to solve bug of repeatedly
+            # replace `gt_semantic_seg`, which is reported in
+            # https://github.com/open-mmlab/mmsegmentation/pull/1445/
+            gt_semantic_seg_copy = gt_semantic_seg.copy()
+            for old_id, new_id in results['label_map'].items():
+                gt_semantic_seg[gt_semantic_seg_copy == old_id] = new_id
+        results['gt_seg_map'] = gt_semantic_seg
+        results['ignore_index'] = self.ignore_index
+
+    def transform(self, results: dict) -> dict:
+        """Function to load multiple types annotations.
+
+        Args:
+            results (dict): Result dict from :obj:``mmengine.BaseDataset``.
+
+        Returns:
+            dict: The dict contains loaded bounding box, label and
+            semantic segmentation.
+        """
+
+        if self.with_bbox:
+            self._load_bboxes(results)
+        if self.with_label:
+            self._load_labels(results)
+        if self.with_mask:
+            self._load_masks(results)
+        if self.with_seg:
+            self._load_seg_map(results)
+        # print('result ', results)
+        # input()
+        return results
+
+    def __repr__(self) -> str:
+        repr_str = self.__class__.__name__
+        repr_str += f'(with_bbox={self.with_bbox}, '
+        repr_str += f'with_label={self.with_label}, '
+        repr_str += f'with_mask={self.with_mask}, '
+        repr_str += f'with_seg={self.with_seg}, '
+        repr_str += f'poly2mask={self.poly2mask}, '
+        repr_str += f"imdecode_backend='{self.imdecode_backend}', "
+        repr_str += f'backend_args={self.backend_args})'
+        return repr_str
