@@ -1,12 +1,14 @@
 # 项目介绍
 基于 mmdetection 框架的增量小样本X光检测 
 mmdetection框架本身未提供增量小样本设定相关功能，本项目部分修改了mmdetection框架源码以支持该设定
-
+本项目是在违禁品X光检测场景提供了一个小样本增量设定的mmdetection框架使用的通用方法，可自然使用到其他场景中。 
+如对你有所帮助，请留下一个小小star~~ ^.^
 # 环境搭建
 mmdetection 3.3.0 根据[官方指导](https://mmdetection.readthedocs.io/zh-cn/latest/get_started.html)配置
 
 # 数据集介绍
-[PIDRAY](https://github.com/lutao2021/PIDray) 
+[PIDRAY](https://github.com/lutao2021/PIDray)  
+本项目对该仓库模型训练代码进行了mmdetection的版本迁移，2.25 -> 3.3, 可参考mmdetection提供的版本迁移文档。
 12类违禁品X光检测数据集
 
 # 任务设定
