@@ -2,7 +2,7 @@ _base_ = [
     '../_base_/datasets/pidray_dataset_4+1.py',
     '../_base_/schedules/pidray_schedule.py', '../_base_/default_runtime.py'
 ]
-
+num_classes = 5
 model = dict(
     type='CascadeRCNN',
     data_preprocessor=dict(
@@ -61,7 +61,7 @@ model = dict(
                 in_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=5,
+                num_classes=num_classes,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0.0, 0.0, 0.0, 0.0],
@@ -78,7 +78,7 @@ model = dict(
                 in_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=5,
+                num_classes=num_classes,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0.0, 0.0, 0.0, 0.0],
@@ -95,7 +95,7 @@ model = dict(
                 in_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=5,
+                num_classes=num_classes,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0.0, 0.0, 0.0, 0.0],
@@ -117,7 +117,7 @@ model = dict(
             num_convs=4,
             in_channels=256,
             conv_out_channels=256,
-            num_classes=5,
+            num_classes=num_classes,
             loss_mask=dict(
                 type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)),
         init_cfg=None),
@@ -217,13 +217,17 @@ model = dict(
 # workflow = [('train', 1)]
 # 每个batch iter恢复旧类的预测头的参数，base_classes_num为旧类的数量
 # custom_hooks = [dict(type='FreezeHeadPartsHook', interval=1, base_classes_num=4)]
-work_dir = './workdir/pidray_incremental1'
+work_dir = './workdir/pidray_incremental4'
 # auto_resume = False
 # gpu_ids = range(0, 4)
-load_from = './workdir/pidray_base4/epoch_12_modified.pth'
+load_from = './workdir/pidray_base8/epoch_12_modified.pth'
 # resume = True
 
 
 default_hooks = dict(checkpoint=dict(max_keep_ckpts=10))
 # 运行命令
-# CUDA_VISIBLE_DEVICES=2,3,4,5 bash ./tools/dist_train.sh configs/cascade_rcnn/pidray_incremental1_cascade_mask_rcnn_r101_with_R0R1.py 4 --auto-scale-lr
+# CUDA_VISIBLE_DEVICES=2,3,4,5 bash ./tools/dist_train.sh configs/cascade_rcnn/pidray_incremental1_cascade_mask_rcnn_r101.py 4 --auto-scale-lr
+
+# python tools/train.py configs/cascade_rcnn/pidray_incremental1_cascade_mask_rcnn_r101.py --auto-scale-lr
+# 测试可视化 
+# python tools/test.py workdir/pidray_incremental4/pidray_incremental1_cascade_mask_rcnn_r101.py workdir/pidray_incremental4/epoch_100.pth --show-dir workdir/pidray_incremental4/

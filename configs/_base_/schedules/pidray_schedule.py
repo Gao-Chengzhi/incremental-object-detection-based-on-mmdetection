@@ -1,11 +1,11 @@
-max_epoch = 12
-# training schedule for 1x
-train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=max_epoch, val_interval=1)
+max_epoch = 100
+# training schedule for 1x   val_interval base 1  incremental 10
+train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=max_epoch, val_interval=10)
 val_cfg = dict(type='ValLoop')
 test_cfg = dict(type='TestLoop')
 
 # learning rate
-
+"""
 # 基类训练
 param_scheduler = [
     dict(
@@ -31,12 +31,12 @@ param_scheduler = [
         milestones=[50, 75, 90],
         gamma=0.1)
 ]
-"""
+
 # optimizer
 # origin lr=0.02 增量阶段，减半尝试
 optim_wrapper = dict(
     type='OptimWrapper',
-    optimizer=dict(type='SGD', lr=0.02, momentum=0.9, weight_decay=0.0001),
+    optimizer=dict(type='SGD', lr=0.02 / 2, momentum=0.9, weight_decay=0.0001),
     clip_grad=None,)
 
 # 

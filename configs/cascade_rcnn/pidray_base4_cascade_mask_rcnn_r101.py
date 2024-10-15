@@ -59,7 +59,7 @@ model = dict(
                 in_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=8,
+                num_classes=4,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0.0, 0.0, 0.0, 0.0],
@@ -76,7 +76,7 @@ model = dict(
                 in_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=8,
+                num_classes=4,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0.0, 0.0, 0.0, 0.0],
@@ -93,7 +93,7 @@ model = dict(
                 in_channels=256,
                 fc_out_channels=1024,
                 roi_feat_size=7,
-                num_classes=8,
+                num_classes=4,
                 bbox_coder=dict(
                     type='DeltaXYWHBBoxCoder',
                     target_means=[0.0, 0.0, 0.0, 0.0],
@@ -115,7 +115,7 @@ model = dict(
             num_convs=4,
             in_channels=256,
             conv_out_channels=256,
-            num_classes=8,
+            num_classes=4,
             loss_mask=dict(
                 type='CrossEntropyLoss', use_mask=True, loss_weight=1.0))),
     train_cfg=dict(
@@ -214,11 +214,11 @@ model = dict(
 # workflow = [('train', 1)]
 
 # work_dir = './workdir/cascade_pidray_base4'
-work_dir = './workdir/pidray_base8'
+work_dir = './workdir/pidray_base4'
 # auto_resume = False
 # gpu_ids = range(0, 4)
 # load_from = './workdir/cascade_pidray_base_with_segm/epoch_12.pth'
-# resume = True
+resume = True
 
 # 运行命令
 

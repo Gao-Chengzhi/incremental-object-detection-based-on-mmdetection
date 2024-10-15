@@ -2,10 +2,10 @@ import torch
 import torch.nn.init as init
 
 # 加载检查点
-pth_path = '/home/xray/xray/mmdetection/workdir/pidray_base8/epoch_12.pth'
+pth_path = '/home/xray/xray/mmdetection/workdir/pidray_base4/epoch_12.pth'
 checkpoint = torch.load(pth_path)
-old_class_num = 8
-new_calss_num = 12
+old_class_num = 4
+new_calss_num = 5
 # 提取状态字典
 state_dict = checkpoint.get('state_dict', checkpoint)
 
@@ -68,7 +68,7 @@ for key, value in state_dict.items():
         modified_state_dict[key] = value
 
 # 保存修改后的状态字典
-modified_pth_path = '/home/xray/xray/mmdetection/workdir/pidray_base8/epoch_12_modified.pth'
+modified_pth_path = '/home/xray/xray/mmdetection/workdir/pidray_base4/epoch_12_modified.pth'
 torch.save(modified_state_dict, modified_pth_path)
 
 print(f"Modified checkpoint saved to {modified_pth_path}")

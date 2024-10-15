@@ -120,7 +120,7 @@ train_dataloader_base = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        metainfo=base8_metainfo,
+        metainfo=base_metainfo,
         ann_file='annotations/xray_train.json',
         data_prefix=dict(img='train/'),
         filter_cfg=dict(filter_empty_gt=True, min_size=32),
@@ -171,7 +171,7 @@ val_dataloader_base = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        metainfo=base8_metainfo,
+        metainfo=base_metainfo,
         ann_file='annotations/xray_test_easy.json',
         data_prefix=dict(img='easy/'),
         test_mode=True,
@@ -230,6 +230,6 @@ train_dataloader = train_dataloader_incremental
 val_dataloader = val_dataloader_incremental
 test_dataloader = test_dataloader_incremental
 """
-train_dataloader = train_dataloader_base
-val_dataloader = val_dataloader_base
-test_dataloader = test_dataloader_base
+train_dataloader = train_dataloader_incremental
+val_dataloader = val_dataloader_incremental
+test_dataloader = test_dataloader_incremental

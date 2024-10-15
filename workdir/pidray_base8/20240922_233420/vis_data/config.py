@@ -247,7 +247,7 @@ launcher = 'pytorch'
 load_from = None
 log_level = 'INFO'
 log_processor = dict(by_epoch=True, type='LogProcessor', window_size=50)
-max_epoch = 12
+max_epoch = 100
 model = dict(
     backbone=dict(
         depth=101,
@@ -534,7 +534,7 @@ model = dict(
     type='CascadeRCNN')
 optim_wrapper = dict(
     clip_grad=None,
-    optimizer=dict(lr=0.02, momentum=0.9, type='SGD', weight_decay=0.0001),
+    optimizer=dict(lr=0.01, momentum=0.9, type='SGD', weight_decay=0.0001),
     type='OptimWrapper')
 param_scheduler = [
     dict(
@@ -542,15 +542,16 @@ param_scheduler = [
     dict(
         begin=0,
         by_epoch=True,
-        end=12,
+        end=100,
         gamma=0.1,
         milestones=[
-            8,
-            11,
+            50,
+            75,
+            90,
         ],
         type='MultiStepLR'),
 ]
-resume = False
+resume = True
 test_cfg = dict(type='TestLoop')
 test_dataloader = dict(
     batch_size=4,
@@ -891,7 +892,7 @@ test_pipeline_base = [
         ),
         type='PackDetInputs'),
 ]
-train_cfg = dict(max_epochs=12, type='EpochBasedTrainLoop', val_interval=1)
+train_cfg = dict(max_epochs=100, type='EpochBasedTrainLoop', val_interval=10)
 train_dataloader = dict(
     batch_sampler=dict(type='AspectRatioBatchSampler'),
     batch_size=8,

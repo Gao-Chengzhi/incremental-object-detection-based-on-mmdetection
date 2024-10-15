@@ -197,12 +197,15 @@ base_metainfo = dict(
 data_root = '/home/xray/data/pidray/'
 dataset_type = 'CocoDataset'
 default_hooks = dict(
-    checkpoint=dict(interval=1, type='CheckpointHook'),
+    checkpoint=dict(interval=1, max_keep_ckpts=10, type='CheckpointHook'),
     logger=dict(interval=50, type='LoggerHook'),
     param_scheduler=dict(type='ParamSchedulerHook'),
     sampler_seed=dict(type='DistSamplerSeedHook'),
     timer=dict(type='IterTimerHook'),
-    visualization=dict(type='DetVisualizationHook'))
+    visualization=dict(
+        draw=True,
+        test_out_dir='workdir/pidray_incremental4/',
+        type='DetVisualizationHook'))
 default_scope = 'mmdet'
 env_cfg = dict(
     cudnn_benchmark=False,
@@ -243,8 +246,8 @@ incremental_metainfo = dict(
             192,
         ),
     ])
-launcher = 'pytorch'
-load_from = None
+launcher = 'none'
+load_from = 'workdir/pidray_incremental4/epoch_100.pth'
 log_level = 'INFO'
 log_processor = dict(by_epoch=True, type='LogProcessor', window_size=50)
 max_epoch = 100
@@ -253,7 +256,7 @@ model = dict(
         depth=101,
         frozen_stages=1,
         init_cfg=dict(checkpoint='torchvision://resnet101', type='Pretrained'),
-        norm_cfg=dict(requires_grad=True, type='BN'),
+        norm_cfg=dict(requires_grad=False, type='BN'),
         norm_eval=True,
         num_stages=4,
         out_indices=(
@@ -313,7 +316,7 @@ model = dict(
                     loss_weight=1.0,
                     type='CrossEntropyLoss',
                     use_sigmoid=False),
-                num_classes=8,
+                num_classes=12,
                 reg_class_agnostic=True,
                 roi_feat_size=7,
                 type='Shared2FCBBoxHead'),
@@ -339,7 +342,7 @@ model = dict(
                     loss_weight=1.0,
                     type='CrossEntropyLoss',
                     use_sigmoid=False),
-                num_classes=8,
+                num_classes=12,
                 reg_class_agnostic=True,
                 roi_feat_size=7,
                 type='Shared2FCBBoxHead'),
@@ -365,7 +368,7 @@ model = dict(
                     loss_weight=1.0,
                     type='CrossEntropyLoss',
                     use_sigmoid=False),
-                num_classes=8,
+                num_classes=12,
                 reg_class_agnostic=True,
                 roi_feat_size=7,
                 type='Shared2FCBBoxHead'),
@@ -380,12 +383,13 @@ model = dict(
             out_channels=256,
             roi_layer=dict(output_size=7, sampling_ratio=0, type='RoIAlign'),
             type='SingleRoIExtractor'),
+        init_cfg=None,
         mask_head=dict(
             conv_out_channels=256,
             in_channels=256,
             loss_mask=dict(
                 loss_weight=1.0, type='CrossEntropyLoss', use_mask=True),
-            num_classes=8,
+            num_classes=12,
             num_convs=4,
             type='FCNMaskHead'),
         mask_roi_extractor=dict(
@@ -532,6 +536,7 @@ model = dict(
             nms=dict(iou_threshold=0.7, type='nms'),
             nms_pre=2000)),
     type='CascadeRCNN')
+num_classes = 12
 optim_wrapper = dict(
     clip_grad=None,
     optimizer=dict(lr=0.01, momentum=0.9, type='SGD', weight_decay=0.0001),
@@ -551,7 +556,7 @@ param_scheduler = [
         ],
         type='MultiStepLR'),
 ]
-resume = True
+resume = False
 test_cfg = dict(type='TestLoop')
 test_dataloader = dict(
     batch_size=4,
@@ -570,6 +575,10 @@ test_dataloader = dict(
                 'Wrench',
                 'Gun',
                 'Bullet',
+                'Sprayer',
+                'HandCuffs',
+                'Knife',
+                'Lighter',
             ),
             palette=[
                 (
@@ -611,6 +620,26 @@ test_dataloader = dict(
                     0,
                     0,
                     70,
+                ),
+                (
+                    0,
+                    0,
+                    192,
+                ),
+                (
+                    250,
+                    170,
+                    30,
+                ),
+                (
+                    100,
+                    170,
+                    30,
+                ),
+                (
+                    220,
+                    220,
+                    0,
                 ),
             ]),
         pipeline=[
@@ -796,8 +825,15 @@ test_dataloader_incremental = dict(
                 'Baton',
                 'Pliers',
                 'Hammer',
+                'Powerbank',
+                'Scissors',
                 'Wrench',
+                'Gun',
+                'Bullet',
+                'Sprayer',
                 'HandCuffs',
+                'Knife',
+                'Lighter',
             ),
             palette=[
                 (
@@ -821,9 +857,44 @@ test_dataloader_incremental = dict(
                     230,
                 ),
                 (
+                    106,
+                    0,
+                    228,
+                ),
+                (
+                    0,
+                    60,
+                    100,
+                ),
+                (
+                    0,
+                    80,
+                    100,
+                ),
+                (
+                    0,
+                    0,
+                    70,
+                ),
+                (
                     0,
                     0,
                     192,
+                ),
+                (
+                    250,
+                    170,
+                    30,
+                ),
+                (
+                    100,
+                    170,
+                    30,
+                ),
+                (
+                    220,
+                    220,
+                    0,
                 ),
             ]),
         pipeline=[
@@ -901,7 +972,7 @@ train_dataloader = dict(
         backend_args=None,
         data_prefix=dict(img='train/'),
         data_root='/home/xray/data/pidray/',
-        filter_cfg=dict(filter_empty_gt=True, min_size=32),
+        filter_cfg=dict(K_shot=10, filter_empty_gt=True, min_size=32),
         metainfo=dict(
             classes=(
                 'Baton',
@@ -912,6 +983,10 @@ train_dataloader = dict(
                 'Wrench',
                 'Gun',
                 'Bullet',
+                'Sprayer',
+                'HandCuffs',
+                'Knife',
+                'Lighter',
             ),
             palette=[
                 (
@@ -953,6 +1028,26 @@ train_dataloader = dict(
                     0,
                     0,
                     70,
+                ),
+                (
+                    0,
+                    0,
+                    192,
+                ),
+                (
+                    250,
+                    170,
+                    30,
+                ),
+                (
+                    100,
+                    170,
+                    30,
+                ),
+                (
+                    220,
+                    220,
+                    0,
                 ),
             ]),
         pipeline=[
@@ -1117,8 +1212,15 @@ train_dataloader_incremental = dict(
                 'Baton',
                 'Pliers',
                 'Hammer',
+                'Powerbank',
+                'Scissors',
                 'Wrench',
+                'Gun',
+                'Bullet',
+                'Sprayer',
                 'HandCuffs',
+                'Knife',
+                'Lighter',
             ),
             palette=[
                 (
@@ -1142,9 +1244,44 @@ train_dataloader_incremental = dict(
                     230,
                 ),
                 (
+                    106,
+                    0,
+                    228,
+                ),
+                (
+                    0,
+                    60,
+                    100,
+                ),
+                (
+                    0,
+                    80,
+                    100,
+                ),
+                (
+                    0,
+                    0,
+                    70,
+                ),
+                (
                     0,
                     0,
                     192,
+                ),
+                (
+                    250,
+                    170,
+                    30,
+                ),
+                (
+                    100,
+                    170,
+                    30,
+                ),
+                (
+                    220,
+                    220,
+                    0,
                 ),
             ]),
         pipeline=[
@@ -1209,6 +1346,10 @@ val_dataloader = dict(
                 'Wrench',
                 'Gun',
                 'Bullet',
+                'Sprayer',
+                'HandCuffs',
+                'Knife',
+                'Lighter',
             ),
             palette=[
                 (
@@ -1250,6 +1391,26 @@ val_dataloader = dict(
                     0,
                     0,
                     70,
+                ),
+                (
+                    0,
+                    0,
+                    192,
+                ),
+                (
+                    250,
+                    170,
+                    30,
+                ),
+                (
+                    100,
+                    170,
+                    30,
+                ),
+                (
+                    220,
+                    220,
+                    0,
                 ),
             ]),
         pipeline=[
@@ -1435,8 +1596,15 @@ val_dataloader_incremental = dict(
                 'Baton',
                 'Pliers',
                 'Hammer',
+                'Powerbank',
+                'Scissors',
                 'Wrench',
+                'Gun',
+                'Bullet',
+                'Sprayer',
                 'HandCuffs',
+                'Knife',
+                'Lighter',
             ),
             palette=[
                 (
@@ -1460,9 +1628,44 @@ val_dataloader_incremental = dict(
                     230,
                 ),
                 (
+                    106,
+                    0,
+                    228,
+                ),
+                (
+                    0,
+                    60,
+                    100,
+                ),
+                (
+                    0,
+                    80,
+                    100,
+                ),
+                (
+                    0,
+                    0,
+                    70,
+                ),
+                (
                     0,
                     0,
                     192,
+                ),
+                (
+                    250,
+                    170,
+                    30,
+                ),
+                (
+                    100,
+                    170,
+                    30,
+                ),
+                (
+                    220,
+                    220,
+                    0,
                 ),
             ]),
         pipeline=[
@@ -1506,4 +1709,4 @@ visualizer = dict(
     vis_backends=[
         dict(type='LocalVisBackend'),
     ])
-work_dir = './workdir/pidray_base8'
+work_dir = './workdir/pidray_incremental4'
