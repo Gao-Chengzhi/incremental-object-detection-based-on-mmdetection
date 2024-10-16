@@ -19,9 +19,9 @@ mmdetection 3.3.0 根据[官方指导](https://mmdetection.readthedocs.io/zh-cn/
 # 运行方式
 下载数据集后，修改数据集config（mmdetection/configs/_base_/datasets/pidray_dataset_4+1.py）中路径  
 ##  基类训练
-使用配置文件 /home/xray/xray/mmdetection/configs/cascade_rcnn/pidray_base4_cascade_mask_rcnn_r101_with_R0R1.py 
+使用配置文件 mmdetection/configs/cascade_rcnn/pidray_base4_cascade_mask_rcnn_r101_with_R0R1.py 
 设定其中的num_classes = 4 
-数据集配置文件 /home/xray/xray/mmdetection/configs/_base_/datasets/pidray_dataset_4+1.py
+数据集配置文件 mmdetection/configs/_base_/datasets/pidray_dataset_4+1.py
 设定dataload为incremental对应的 位于文件最后
 运行命令
 ```
