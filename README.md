@@ -41,8 +41,8 @@ CUDA_VISIBLE_DEVICES=2,3,4,5 bash tools/dist_train.sh configs/cascade_rcnn/pidra
 混淆矩阵右侧背景类预测很多，前四类基类几乎无预测。
 ## 增量训练
 
-/home/xray/xray/mmdetection/mmdet/engine/hooks/freeze_part_param_hook.py 是否需要冻结背景类
-/home/xray/xray/mmdetection/configs/_base_/schedules/pid_schedule.py 增量过程训练epoch设为100，设置最大保存模型数量
+mmdetection/mmdet/engine/hooks/freeze_part_param_hook.py 是否需要冻结背景类
+mmdetection/configs/_base_/schedules/pid_schedule.py 增量过程训练epoch设为100，设置最大保存模型数量
 
 小样本训练不适合开多卡，每个卡上batch size较小，导致不稳定。
 
